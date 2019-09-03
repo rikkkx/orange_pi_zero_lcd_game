@@ -24,6 +24,11 @@ class LCD:
         self._init_display()
 
     def _init_display(self):
+        gpio.setcfg(self.RS, gpio.OUTPUT)
+        gpio.setcfg(self.E, gpio.OUTPUT)
+        for p in self.D:
+            gpio.setcfg(p, gpio.OUTPUT)
+
         self._send_byte(0x33, self.RS_CMD)  # 110011 Initialise
         self._send_byte(0x32, self.RS_CMD)  # 110010 Initialise
         self._send_byte(0x06, self.RS_CMD)  # 000110 Cursor move direction
