@@ -32,48 +32,6 @@ class LCD:
         self.clear()
         self.set_cursor(0, 0)
 
-    def _send_byte2(self, bits, mode):
-        """
-        Send byte to data pins
-
-        bits = data
-        mode = True  for character
-             False for command
-        """
-        gpio.output(self.RS, mode) # RS
-
-        # High bits
-        gpio.output(self.D[4], False)
-        gpio.output(self.D[5], False)
-        gpio.output(self.D[6], False)
-        gpio.output(self.D[7], False)
-        if bits&0x10==0x10:
-            gpio.output(self.D[4], True)
-        if bits&0x20==0x20:
-            gpio.output(self.D[5], True)
-        if bits&0x40==0x40:
-            gpio.output(self.D[6], True)
-        if bits&0x80==0x80:
-            gpio.output(self.D[7], True)
-
-        self._togle_e()
-
-        # Low bits
-        gpio.output(self.D[4], False)
-        gpio.output(self.D[5], False)
-        gpio.output(self.D[6], False)
-        gpio.output(self.D[7], False)
-        if bits&0x01==0x01:
-            gpio.output(self.D[4], True)
-        if bits&0x02==0x02:
-            gpio.output(self.D[5], True)
-        if bits&0x04==0x04:
-            gpio.output(self.D[6], True)
-        if bits&0x08==0x08:
-            gpio.output(self.D[7], True)
-
-        self._togle_e()
-
     def _send_byte(self, data: Union[Bits, int], rs_mode):
         if isinstance(data, int):
             data = Bits('0b' + bin(data)[2:].rjust(8, '0'))
@@ -111,5 +69,8 @@ class LCD:
         cmd = 0x80 | (line_start_addr + position)
         self._send_byte(cmd, self.RS_CMD)
 
-    def create_char(pos: int, char_mask: List[int]):
-        pass
+    def create_char(code: int, char_mask: List[int]):
+        cmd = 0x40 | code
+        self._send_byte(cmd, self.RS_CMD)
+
+        self.print(char_mask)
