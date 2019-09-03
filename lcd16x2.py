@@ -59,7 +59,10 @@ class LCD:
 
     def print(self, array: List[int]):
         for c in array:
-            self._send_byte(c, self.RS_DATA)
+            self.printc(c)
+
+    def printc(self, c: int):
+        self._send_byte(c, self.RS_DATA)
 
     def prints(self, msg: str):
         self.print([ord(x) for x in msg])
@@ -69,8 +72,8 @@ class LCD:
         cmd = 0x80 | (line_start_addr + position)
         self._send_byte(cmd, self.RS_CMD)
 
-    def create_char(code: int, char_mask: List[int]):
-        cmd = 0x40 | code
+    def create_char(self, code: int, char_mask: List[int]):
+        cmd = 0x40 | (code << 3)
         self._send_byte(cmd, self.RS_CMD)
 
         self.print(char_mask)
