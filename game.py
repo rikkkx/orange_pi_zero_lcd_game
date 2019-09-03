@@ -1,5 +1,6 @@
 
 import time
+from datetime import timedelta, datetime
 from random import randint
 from typing import List
 
@@ -8,8 +9,8 @@ from pyA20.gpio import gpio, port
 from lcd16x2 import LCD
 
 
-PIN_BUTTON = port.PA14
-PIN_AUTOPLAY = port.PA16
+PIN_BUTTON = port.PA3
+PIN_AUTOPLAY = port.PA1
 
 SPRITE_RUN1 = 1
 SPRITE_RUN2 = 2
@@ -46,12 +47,11 @@ HERO_POSITION_RUN_UPPER_2 = 12  #                              (pose 2)
 
 
 lcd = LCD(rs=port.PA11, e=port.PA12, d_pins=[
-    port.PA10, port.PA13, port.PA2, port.PA18, port.PA19, port.PA07, port.PG07, port.PG06
+    port.PA10, port.PA13, port.PA2, port.PA18, port.PA19, port.PA7, port.PG7, port.PG6
 ])
 
 terrain_upper: List[int] = [SPRITE_TERRAIN_EMPTY for _ in range(TERRAIN_WIDTH + 1)]
 terrain_lower: List[int] = [SPRITE_TERRAIN_EMPTY for _ in range(TERRAIN_WIDTH + 1)]
-button_pushed = False
 
 
 def initialize_graphics():
@@ -130,6 +130,10 @@ def initialize_graphics():
     for i in range(7):
         lcd.create_char(i + 1, graphics[i])
 
+    global terrain_upper, terrain_lower
+    terrain_upper = [SPRITE_TERRAIN_EMPTY for _ in range(TERRAIN_WIDTH + 1)]
+    terrain_lower = [SPRITE_TERRAIN_EMPTY for _ in range(TERRAIN_WIDTH + 1)]
+
 
 def advance_terrain(terrain: List[int], new_terrain: int):
     for i in range(TERRAIN_WIDTH):
@@ -181,14 +185,16 @@ def draw_hero(position: int, terrain_upper: List[int], terrainLower: List[int], 
 
     if (upper != ord(' ')):
         terrain_upper[HERO_HORIZONTAL_POSITION] = upper
-        collide = not (upperSave == SPRITE_TERRAIN_EMPTY)
+        collide = not (upper_save == SPRITE_TERRAIN_EMPTY)
     if (lower != ord(' ')):
         terrain_lower[HERO_HORIZONTAL_POSITION] = lower
-        collide |= not (lowerSave == SPRITE_TERRAIN_EMPTY)
+        collide |= not (lower_save == SPRITE_TERRAIN_EMPTY)
 
-    digits = len(str(score)) + 1
+    digits = len(str(score))
 
     # Draw the scene
+    # import pdb
+    # pdb.set_trace()
     terrain_upper[TERRAIN_WIDTH] = 0
     terrain_lower[TERRAIN_WIDTH] = 0
     temp = terrain_upper[16 - digits]
@@ -200,12 +206,26 @@ def draw_hero(position: int, terrain_upper: List[int], terrainLower: List[int], 
     lcd.print(terrain_lower)
 
     lcd.set_cursor(16 - digits, 0)
-    lcd.print(str(score))
+    lcd.prints(str(score))
 
-    terrain_upper[HERO_HORIZONTAL_POSITION] = upperSave
-    terrain_lower[HERO_HORIZONTAL_POSITION] = lowerSave
+    terrain_upper[HERO_HORIZONTAL_POSITION] = upper_save
+    terrain_lower[HERO_HORIZONTAL_POSITION] = lower_save
 
     return collide
+
+
+last_pressed = datetime.now()
+
+def button_pushed(with_delay=False) -> bool:
+    global last_pressed
+    btn_pressed = gpio.input(PIN_BUTTON)
+    if with_delay and btn_pressed:
+        last_pressed = datetime.now()
+        return btn_pressed
+    if (datetime.now() - last_pressed).seconds < 1:
+        return False
+    return btn_pressed
+    
 
 
 def setup():
@@ -231,14 +251,13 @@ def loop():
                   terrain_upper, terrain_lower, distance >> 3)
         if blink:
             lcd.set_cursor(0, 0)
-            lcd.print("Press Start")
-        time.delay(0.25)
+            lcd.prints("Press Start")
+        time.sleep(0.25)
         blink = not blink
-        if button_pushed:
+        if button_pushed(with_delay=True):
             initialize_graphics()
             hero_pos = HERO_POSITION_RUN_LOWER_1
             playing = True
-            button_pushed = False
             distance = 0
         return None
 
@@ -254,7 +273,7 @@ def loop():
             new_terrain_type = TERRAIN_EMPTY
             new_terrain_duration = 10 + randint(0, 10)
 
-    if gpio.input(PIN_BUTTON):
+    if button_pushed():
         if (hero_pos <= HERO_POSITION_RUN_LOWER_2):
             hero_pos = HERO_POSITION_JUMP_1
 
@@ -274,8 +293,8 @@ def loop():
             hero_pos += 1
         distance += 1
 
-        gpio.output(PIN_AUTOPLAY, terrain_lower[HERO_HORIZONTAL_POSITION + 2] == SPRITE_TERRAIN_EMPTY)
-    time.delay(0.1)
+        gpio.output(PIN_AUTOPLAY, not terrain_lower[HERO_HORIZONTAL_POSITION + 2] == SPRITE_TERRAIN_EMPTY)
+    time.sleep(0.1)
 
 
 if __name__ == '__main__':

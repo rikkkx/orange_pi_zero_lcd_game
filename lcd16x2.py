@@ -34,6 +34,7 @@ class LCD:
         self._send_byte(0x06, self.RS_CMD)  # 000110 Cursor move direction
         self._send_byte(0x0C, self.RS_CMD)  # 001100 Display On,Cursor Off, Blink Off
         self._send_byte(0x28, self.RS_CMD)  # 101000 Data length, number of lines, font size
+        self.cleanup_chars()
         self.clear()
         self.set_cursor(0, 0)
 
@@ -82,3 +83,7 @@ class LCD:
         self._send_byte(cmd, self.RS_CMD)
 
         self.print(char_mask)
+
+    def cleanup_chars(self):
+        for i in range(8):
+            self.create_char(code=i, char_mask=[0 for x in range(8)])
